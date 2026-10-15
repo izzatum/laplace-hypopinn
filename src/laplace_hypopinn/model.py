@@ -114,8 +114,9 @@ def module_adapter(module: nn.Module) -> tuple[Parameters, Forward]:
     """Snapshot an eval module and buffers for torch.func-compatible scalar models.
 
     The caller is responsible for a differentiable, deterministic, pointwise model.
-    Output shape may be (n,) or (n,1). Parameters and module buffers are isolated
-    from the original module, including custom modules that mutate their buffers.
+    Output shape may be (n,) or (n,1). Only trainable parameters enter the returned
+    mapping. Frozen parameters and buffers remain isolated constants, copied for
+    each call so custom module mutation cannot change subsequent evaluations.
     """
     import copy
 
@@ -123,15 +124,26 @@ def module_adapter(module: nn.Module) -> tuple[Parameters, Forward]:
         raise ValueError("module_adapter requires every module to be in eval mode")
     local_module = copy.deepcopy(module)
     parameters = {
-        name: value.detach().clone().requires_grad_(value.requires_grad)
+        name: value.detach().clone().requires_grad_()
         for name, value in local_module.named_parameters()
+        if value.requires_grad
+    }
+    if not parameters:
+        raise ValueError("module_adapter requires at least one trainable parameter")
+    frozen_parameters = {
+        name: value.detach().clone()
+        for name, value in local_module.named_parameters()
+        if not value.requires_grad
     }
     buffers = {name: value.detach().clone() for name, value in local_module.named_buffers()}
 
     def forward(parameters, coordinates):
         return torch.func.functional_call(
             local_module,
-            (parameters, {k: v.clone() for k, v in buffers.items()}),
+            (
+                {**parameters, **{k: v.clone() for k, v in frozen_parameters.items()}},
+                {k: v.clone() for k, v in buffers.items()},
+            ),
             (coordinates,),
             strict=True,
         )

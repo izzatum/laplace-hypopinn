@@ -186,3 +186,72 @@ def test_disconnected_linear_shapes_use_generic_layout():
 def test_default_mlp_predict_rejects_invalid_mapping(parameters):
     with pytest.raises(ValueError, match="MLP"):
         predict(parameters, torch.ones(2, 2))
+
+
+def test_module_adapter_excludes_frozen_weights_from_training_and_jacobians():
+    from laplace_hypopinn.config import TrainingConfig
+    from laplace_hypopinn.training import train
+    from laplace_hypopinn.types import TrainingBatch
+
+    module = nn.Linear(2, 1, dtype=torch.float64).eval()
+    with torch.no_grad():
+        module.weight.copy_(torch.tensor([[0.3, 0.4]], dtype=torch.float64))
+        module.bias.fill_(0.2)
+    module.weight.requires_grad_(False)
+    original = {name: value.detach().clone() for name, value in module.named_parameters()}
+    parameters, forward = module_adapter(module)
+    assert tuple(parameters) == ("bias",)
+    vector, layout = flatten_parameters(parameters)
+    assert layout.numel == vector.numel() == 1
+    coordinates = torch.tensor([[0.2, 0.7], [0.5, 0.8]], dtype=torch.float64)
+    expected = module(coordinates).detach()
+    torch.testing.assert_close(forward(parameters, coordinates), expected)
+    jacobian = torch.func.jacrev(lambda p: forward(p, coordinates))(parameters)
+    assert tuple(jacobian) == ("bias",)
+    torch.testing.assert_close(jacobian["bias"], torch.ones(2, 1, 1, dtype=torch.float64))
+    input_jacobian = torch.func.jacrev(lambda x: forward(parameters, x))(coordinates)
+    torch.testing.assert_close(input_jacobian[0, 0, 0], original["weight"][0])
+    batch = TrainingBatch(
+        coordinates,
+        torch.full((2,), 2.0, dtype=torch.float64),
+        coordinates,
+        torch.zeros(2, 1, dtype=torch.float64),
+    )
+    result = train(parameters, batch, TrainingConfig(steps=3), RandomStreams(1), forward=forward)
+    assert tuple(result.parameters) == ("bias",)
+    assert not torch.equal(result.parameters["bias"], parameters["bias"])
+    trained_input_jacobian = torch.func.jacrev(lambda x: forward(result.parameters, x))(coordinates)
+    torch.testing.assert_close(trained_input_jacobian, input_jacobian)
+    for name, value in module.named_parameters():
+        assert torch.equal(value, original[name])
+    with torch.no_grad():
+        module.weight.add_(100)
+        module.bias.add_(100)
+    torch.testing.assert_close(forward(parameters, coordinates), expected)
+
+
+def test_module_adapter_rejects_all_frozen_models():
+    module = nn.Linear(2, 1).eval().requires_grad_(False)
+    with pytest.raises(ValueError, match="trainable"):
+        module_adapter(module)
+
+
+def test_module_adapter_isolates_frozen_constants_from_mutating_module_code():
+    class MutatingFrozen(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.weight = nn.Parameter(torch.tensor([0.3, 0.4]), requires_grad=False)
+            self.bias = nn.Parameter(torch.tensor(0.2))
+
+        def forward(self, x):
+            with torch.no_grad():
+                self.weight.add_(1)
+            return (x * self.weight).sum(-1) + self.bias
+
+    module = MutatingFrozen().eval()
+    parameters, forward = module_adapter(module)
+    coordinates = torch.ones(2, 2)
+    first = forward(parameters, coordinates)
+    second = forward(parameters, coordinates)
+    torch.testing.assert_close(first, second)
+    torch.testing.assert_close(module.weight, torch.tensor([0.3, 0.4]))

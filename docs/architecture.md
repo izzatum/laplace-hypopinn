@@ -58,8 +58,10 @@ the built-in model. A forward has signature `forward(parameters, coordinates)`;
 it must be deterministic, pointwise, differentiable through coordinate and
 parameter derivatives, and return `(n,)` or `(n,1)` scalar times. `module_adapter`
 snapshots an eval-mode `torch.nn.Module`, including isolated buffers, into this
-interface using `torch.func.functional_call`. The caller supplies the module's
-initialization and matching dtype/device. See the [README example](../README.md)
+interface using `torch.func.functional_call`. Only trainable parameters enter the
+optimization and posterior layout; frozen parameters remain isolated constants
+that are copied for each call, and models with no trainable parameters are rejected.
+The caller supplies the module's initialization and matching dtype/device. See the [README example](../README.md)
 and [custom observed-data experiment](../examples/extend_research.py).
 
 Generic legacy diagonal, direct GGN and VaLLA paths use functional derivatives.
