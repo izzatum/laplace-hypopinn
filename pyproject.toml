@@ -9,6 +9,9 @@ description = "Functional physics-informed hypocenter inversion and Laplace appr
 requires-python = ">=3.12"
 dependencies = ["numpy>=1.26,<3", "torch>=2.5,<3"]
 
+[project.scripts]
+hypopinn = "laplace_hypopinn.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9", "build>=1.2"]
 fast-marching = ["scikit-fmm>=2024.5.29"]
