@@ -56,7 +56,10 @@ def prepare_problem(config: ExperimentConfig | DataConfig, *, dtype=None, device
     to float32/CPU. Keyword overrides take precedence. Source/reference fields in
     an observed NPZ are optional and never synthesized from config.source.
     Otway uses CSV transpose, configured bounds, linspace axes, and the archived
-    tensor floor-division source cell on those axes.
+    tensor floor-division source cell on those axes. Gradient references retain
+    the archived acosh arithmetic unless the largest dimensionless increment
+    above one is at most sqrt(dtype epsilon); that cancellation-prone regime
+    uses the equivalent asinh expression with its continuous zero limit.
     """
     if isinstance(config, ExperimentConfig):
         dtype = config.dtype if dtype is None else dtype
@@ -117,8 +120,22 @@ def prepare_problem(config: ExperimentConfig | DataConfig, *, dtype=None, device
         if gradient == 0:
             reference = torch.sqrt(distance_squared) / data.surface_velocity
         else:
-            reference = torch.acosh(1. + .5 * (1. / velocity) * (1. / source_velocity) *
-                                     gradient**2 * distance_squared) / abs(gradient)
+            increment = .5 * (1. / velocity) * (1. / source_velocity) * gradient**2 * distance_squared
+            # In acosh(1+q), addition loses O(eps/q) relative accuracy in q.
+            # If even max(q) <= sqrt(eps), the whole map is cancellation-prone.
+            # Its scale includes grid distances, velocity and gradient; ordinary
+            # archived regimes keep their original bitwise arithmetic.
+            if increment.max() <= torch.finfo(dtype).eps**.5:
+                scale = torch.sqrt(distance_squared) / torch.sqrt(velocity) / torch.sqrt(source_velocity)
+                argument = .5 * abs(gradient) * scale
+                # T = scale * asinh(argument)/argument, with ratio(0)=1.
+                # This also covers gradients too tiny for the selected dtype.
+                denominator = torch.where(argument > 0, argument, torch.ones_like(argument))
+                ratio = torch.where(argument > 0, torch.asinh(argument) / denominator,
+                                    torch.ones_like(argument))
+                reference = scale * ratio
+            else:
+                reference = torch.acosh(1. + increment) / abs(gradient)
     indices = _receiver_indices(data, grid)
     return Problem(grid, grid.coordinates[indices], reference.flatten()[indices], reference, source)
 

@@ -62,6 +62,30 @@ def test_gradient_vertical_analytic_integral(gradient):
     assert torch.isfinite(problem.reference_times).all()
 
 
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("gradient", [1e-8, -1e-8, 0.])
+def test_tiny_gradient_has_continuous_homogeneous_limit(dtype, gradient):
+    problem = prepare_problem(DataConfig(velocity_gradient=gradient), dtype=dtype)
+    expected = torch.linalg.vector_norm(problem.grid.coordinates - problem.true_source, dim=1) / 2.
+    tolerance = 3e-7 if dtype == torch.float32 else 1e-8
+    torch.testing.assert_close(problem.reference_times.flatten(), expected,
+                               rtol=tolerance, atol=tolerance)
+    assert .9 < float(problem.reference_times.max()) < .91
+    assert torch.isfinite(problem.reference_times).all()
+    assert problem.reference_times[50, 75] == 0
+    assert problem.reference_times[50, 76] > 0
+
+
+@pytest.mark.parametrize("dtype,gradient", [(torch.float32, 1e-50), (torch.float64, 1e-200)])
+def test_underflowing_gradient_preserves_finite_near_source_times(dtype, gradient):
+    problem = prepare_problem(DataConfig(velocity_gradient=gradient, source=(1e-10, 1e-10)),
+                              dtype=dtype)
+    expected = torch.linalg.vector_norm(problem.grid.coordinates - problem.true_source, dim=1) / 2.
+    torch.testing.assert_close(problem.reference_times.flatten(), expected)
+    assert torch.isfinite(problem.reference_times).all()
+    assert problem.reference_times[0, 0] > 0
+
+
 def test_otway_bytes_transpose_bounds_receivers_and_float32_source_floor():
     skfmm = pytest.importorskip("skfmm")
     path = ROOT / "otway2.csv"
