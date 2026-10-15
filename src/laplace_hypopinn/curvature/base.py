@@ -59,8 +59,8 @@ class Posterior:
     ``blocks`` and ``factor`` contain lower Cholesky factors of precision;
     ``low_rank`` contains columns B for precision diag(diagonal) + B B.T.
     ``eigenbasis`` stores (output basis, augmented-input basis, precision eigenvalues).
-    Low-rank precision tensors are snapshots; their small solve factor is built once.
-    ``low_rank_jitter`` records any roundoff repair in that cached factor.
+    Low-rank precision tensors are snapshots; their Householder QR and small SVD
+    inverse-root factors are built once in the declared dtype, without dense bases.
     """
 
     mean: Tensor
@@ -74,8 +74,11 @@ class Posterior:
     metadata: Mapping = field(default_factory=dict)
     forward: Forward = predict
     prediction_kind: str = 'travel_time'
-    _low_rank_scaled: Tensor | None = field(default=None, init=False, repr=False, compare=False)
-    _low_rank_factor: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    _low_rank_qr: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    _low_rank_tau: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    _low_rank_rotation: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    _low_rank_scales: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    # Orthogonal inverse roots require no additive jitter.
     low_rank_jitter: float = field(default=0., init=False)
 
     def __post_init__(self):
@@ -111,14 +114,21 @@ class Posterior:
             columns = self.low_rank.detach().clone()
             object.__setattr__(self, 'diagonal', diagonal)
             object.__setattr__(self, 'low_rank', columns)
-            scaled = columns/diagonal[:, None]
-            object.__setattr__(self, '_low_rank_scaled', scaled)
             rank = columns.shape[1]
             if rank:
-                middle = torch.eye(rank, dtype=diagonal.dtype, device=diagonal.device)+columns.T@scaled
-                small_factor, jitter = cholesky_with_jitter(middle)
-                object.__setattr__(self, '_low_rank_factor', small_factor)
-                object.__setattr__(self, 'low_rank_jitter', jitter)
+                whitened = columns/diagonal.sqrt()[:, None]
+                if not torch.isfinite(whitened).all():
+                    raise ValueError('low-rank whitened columns must be finite in the declared dtype')
+                qr, tau = torch.geqrf(whitened)
+                count = tau.numel()
+                rotation, singular_values, _ = torch.linalg.svd(torch.triu(qr[:count]), full_matrices=False)
+                scales = torch.hypot(torch.ones_like(singular_values), singular_values).reciprocal()
+                if not torch.isfinite(scales).all() or not (scales > 0).all():
+                    raise ValueError('low-rank inverse-root scales must be finite and positive')
+                object.__setattr__(self, '_low_rank_qr', qr[:, :count].contiguous())
+                object.__setattr__(self, '_low_rank_tau', tau)
+                object.__setattr__(self, '_low_rank_rotation', rotation)
+                object.__setattr__(self, '_low_rank_scales', scales)
         elif self.representation == 'kronecker':
             if len(self.eigenbasis) != len(self.layout.blocks):
                 raise ValueError('eigenbasis blocks must match parameter layout')

@@ -173,17 +173,25 @@ Add damping separately. INF does not generally recover dense F even at full rank
 because its EFB basis representation is diagonal.
 
 For INF, and also VaLLA below, write precision P=D+BBᵀ with strictly positive
-diagonal D. Cache the Cholesky factor of H=I+BᵀD⁻¹B. For independent standard
-normal ξ,η, use perturb-and-solve:
+diagonal D. Whiten the columns C=D⁻¹ᐟ²B and cache a raw Householder QR
+decomposition C=Q[R;0], followed by the small SVD R=U diag(s) Vᵀ. For a
+standard normal parameter vector ξ, apply the inverse precision root:
 
 \[
-h=D^{1/2}\xi+B\eta,\qquad
-\delta=D^{-1}h-D^{-1}B\operatorname{solve}(H,B^\top D^{-1}h).
+E=\operatorname{blockdiag}\!\left(
+U\operatorname{diag}\!\left((1+s^2)^{-1/2}\right)U^\top,I\right),\qquad
+\delta=D^{-1/2}QEQ^\top\xi.
 \]
 
-Then Cov(δ)=P⁻¹. This uses no explicit covariance inverse, tolerates rank-deficient
-B and avoids factoring BᵀB. Scale and regularization belong in D and B before
-sampling. Precision factorization is cached across draws.
+Then Cov(δ)=P⁻¹. Householder transforms apply Q and Qᵀ without materializing
+a full parameter-space basis. The implementation scales informed components
+directly using `1/hypot(1,s)`, preserving small variances without subtracting
+nearly equal vectors or squaring large singular values. Factorization and
+transforms use the declared dtype; no promotion or truncation is implicit.
+Rank-deficient B and rank zero are valid. With k=min(parameter count, rank),
+cache storage is O(parameter count × rank + k²); it is reused across draws.
+Scale and regularization belong in D and B before sampling. Diagnostic dense
+covariance roots apply this same transform only after the dense-memory guard.
 
 ## VaLLA: fixed-inducing PINN residual adaptation
 

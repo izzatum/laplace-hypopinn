@@ -49,25 +49,30 @@ def sample_vectors(posterior, count, streams=None, *, generator=None):
             for _ in range(count)
         ])
     elif kind == 'low_rank':
-        diagonal, columns = posterior.diagonal, posterior.low_rank
-        rank = columns.shape[1]
-        if rank:
-            scaled = posterior._low_rank_scaled
-            factor = posterior._low_rank_factor
-        samples = []
-        for _ in range(count):
-            noise = normal((mean.numel(),))*diagonal.sqrt()
-            if rank:
-                noise = noise+columns@normal((rank,))
-                right = columns.T@(noise/diagonal)
-                solved = torch.cholesky_solve(right[:, None], factor).reshape(-1)
-                samples.append(noise/diagonal-scaled@solved)
-            else:
-                samples.append(noise/diagonal)
-        offsets = torch.stack(samples)
+        offsets = torch.stack([
+            _low_rank_inverse_root(posterior, normal((mean.numel(), 1))).reshape(-1)
+            for _ in range(count)
+        ])
     else:
         raise ValueError(f'unsupported posterior representation {kind!r}')
     return (offsets+mean).detach()
+
+
+def _low_rank_inverse_root(posterior, noise):
+    """Apply D^-1/2 Q diag(U diag(1/hypot(1,s)) U.T, I) Q.T.
+
+    Raw Householder reflectors apply Q without a dense parameter-space basis.
+    Rotating and scaling directly avoids subtracting nearly equal vectors.
+    """
+    if posterior.low_rank.shape[1]:
+        qr, tau = posterior._low_rank_qr, posterior._low_rank_tau
+        rotation, scales = posterior._low_rank_rotation, posterior._low_rank_scales
+        rotated = torch.ormqr(qr, tau, noise, left=True, transpose=True)
+        count = scales.numel()
+        head = rotation@((rotation.T@rotated[:count])*scales[:, None])
+        rotated = torch.cat((head, rotated[count:]), dim=0)
+        noise = torch.ormqr(qr, tau, rotated, left=True, transpose=False)
+    return noise/posterior.diagonal.sqrt()[:, None]
 
 
 def draw_parameters(posterior, count, streams=None, *, generator=None):
@@ -84,6 +89,8 @@ def covariance_root(posterior, *, max_dense_bytes=DEFAULT_MAX_DENSE_BYTES):
     identity = torch.eye(size, dtype=posterior.mean.dtype, device=posterior.mean.device)
     if posterior.representation == 'diagonal':
         return posterior.diagonal.rsqrt().diag()
+    if posterior.representation == 'low_rank':
+        return _low_rank_inverse_root(posterior, identity)
     if posterior.representation == 'dense':
         factor = posterior.factor
     else:

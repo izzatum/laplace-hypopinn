@@ -88,9 +88,8 @@ def test_precision_covariance_and_perturb_solve_with_singular_gram():
     generator = torch.Generator().manual_seed(9)
     expected = []
     for _ in range(3):
-        h = posterior.diagonal.sqrt() * torch.randn(6, dtype=torch.float64, generator=generator)
-        h += posterior.low_rank @ torch.randn(6, dtype=torch.float64, generator=generator)
-        expected.append(torch.linalg.solve(precision, h))
+        noise = torch.randn((6, 1), dtype=torch.float64, generator=generator)
+        expected.append((root@noise).reshape(-1))
     actual = sample_vectors(posterior, 3, generator=torch.Generator().manual_seed(9))
     torch.testing.assert_close(actual, torch.stack(expected))
 
