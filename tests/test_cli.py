@@ -1,6 +1,26 @@
 import json
+from types import SimpleNamespace
+
+import torch
 
 from laplace_hypopinn.cli import main
+
+
+def test_velocity_path_overrides_loaded_config(tmp_path, monkeypatch):
+    configuration = tmp_path / 'experiment.toml'
+    configuration.write_text('[data]\nkind="otway"\nvelocity_path="original.csv"\n')
+    monkeypatch.chdir(tmp_path)
+    seen = []
+
+    def run(config, **kwargs):
+        seen.append(config)
+        return SimpleNamespace(output=kwargs['output'], map_location=torch.zeros(2),
+                               metadata={'method': config.laplace.method})
+
+    monkeypatch.setattr('laplace_hypopinn.experiment.run_experiment', run)
+    assert main(['run', '--config', str(configuration), '--velocity-path', 'replacement.csv',
+                 '--output', str(tmp_path / 'run')]) == 0
+    assert seen[0].data.velocity_path == str(tmp_path / 'replacement.csv')
 
 
 def test_presets(capsys):

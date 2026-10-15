@@ -3,6 +3,7 @@
 import argparse
 from dataclasses import replace
 import json
+from pathlib import Path
 
 from .config import LaplaceConfig
 from .presets import load_config, load_preset
@@ -54,6 +55,9 @@ def main(argv=None):
         import torch
         torch.set_num_threads(args.threads)
     config = load_config(args.config) if args.config else load_preset(args.preset or 'ex2', velocity_path=args.velocity_path)
+    if args.velocity_path is not None:
+        config = replace(config, data=replace(config.data,
+                         velocity_path=str(Path(args.velocity_path).expanduser().resolve())))
     # With no explicit research configuration, the command defaults to a quick
     # executable example. An explicit preset/config retains full research budgets.
     if args.smoke or (args.config is None and args.preset is None):
