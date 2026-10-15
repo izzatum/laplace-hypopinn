@@ -1,0 +1,35 @@
+# Archived EX3_2 settings; budgets may be reduced for smoke tests.
+name = "ex3_2"
+seed = 4321
+dtype = "float32"
+device = "cpu"
+
+[model]
+widths = [2, 16, 16, 32, 32, 16, 16, 1]
+activation = "mish"
+initialization = "kaiming_normal"
+
+[data]
+kind = "otway"
+source = [0.75, 1.1]
+collocation_count = 5001
+z_bounds = [0.0, 1.28]
+x_bounds = [0.0, 1.704]
+grid_shape = [246, 305]
+receiver_count = 6
+velocity_path = "../otway2.csv"
+receiver_indices = [0, 60, 120, 180, 240, 300]
+
+[training]
+steps = 3001
+learning_rate = 0.005
+betas = [0.5, 0.9]
+eta_min = 0.0
+
+[laplace]
+method = "legacy_diagonal"
+batches = 1000
+batch_size = 5001
+samples = 1000
+add = 5000.0
+multiply = 0.001

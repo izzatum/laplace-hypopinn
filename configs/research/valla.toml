@@ -1,0 +1,17 @@
+# Fixed-inducing weighted-residual PINN VaLLA adaptation (Ortega et al., ICML 2024).
+# MAP, prior/damping, residual weights and inducing row selections stay fixed.
+# Each draw uses T_MAP + J_T delta, reusing delta across the complete field.
+name = "research_valla"
+seed = 4321
+dtype = "float32"
+device = "cpu"
+
+[laplace]
+method = "valla"
+prior_precision = 1.0
+scale = 1.0
+chunk_size = 64
+inducing_count = 32
+variational_steps = 200
+variational_lr = 0.01
+alpha = 0

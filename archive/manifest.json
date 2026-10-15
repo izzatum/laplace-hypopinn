@@ -1,0 +1,75 @@
+{
+  "algorithm": "sha256",
+  "files": [
+    {
+      "original_path": "EX_1.ipynb",
+      "archived_path": "archive/notebooks/EX_1.ipynb",
+      "sha256": "bd34c47aa08901f565fdd9d1b8b2691b292bcee2ceefcc46c5b84bf6d68e60f3"
+    },
+    {
+      "original_path": "EX_2.ipynb",
+      "archived_path": "archive/notebooks/EX_2.ipynb",
+      "sha256": "cee7ccfd0e41dd8d5691666f141b75610a87c65c25aeba2722686fa30e603eea"
+    },
+    {
+      "original_path": "EX_3.ipynb",
+      "archived_path": "archive/notebooks/EX_3.ipynb",
+      "sha256": "1cd0ecc4a065d7d10169c23e287d2f381d9ae6bc8745278168c06ccbc491cee1"
+    },
+    {
+      "original_path": "EX_3_2.ipynb",
+      "archived_path": "archive/notebooks/EX_3_2.ipynb",
+      "sha256": "8eac8f9e7c1d293cc16fa0fed068aa2623ad009e482ef55a271794ba1e8a8e37"
+    },
+    {
+      "original_path": "EX_3_3.ipynb",
+      "archived_path": "archive/notebooks/EX_3_3.ipynb",
+      "sha256": "eff90fa88da5216e9378664fdb74680da9987870f650cb58b80bf3785f2652d6"
+    },
+    {
+      "original_path": "EX_3_plot.ipynb",
+      "archived_path": "archive/notebooks/EX_3_plot.ipynb",
+      "sha256": "32233bb6144157b19e49859b4a5499feea1b94109313919d51c4e76a4e1cecd0"
+    },
+    {
+      "original_path": "curvature/__init__.py",
+      "archived_path": "archive/legacy/curvature/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original_path": "curvature/curvatures.py",
+      "archived_path": "archive/legacy/curvature/curvatures.py",
+      "sha256": "e9a482c633d1529a2f299503d6f2199817edc6e43bca43f0b9b24e48112e74ce"
+    },
+    {
+      "original_path": "curvature/datasets.py",
+      "archived_path": "archive/legacy/curvature/datasets.py",
+      "sha256": "607fd6cb534189b8fe6ffa33a949ed9abe51d377f407c4fb20b5bbe0014365aa"
+    },
+    {
+      "original_path": "curvature/imagenet.py",
+      "archived_path": "archive/legacy/curvature/imagenet.py",
+      "sha256": "1046cde3d3f72de8658ba33a87d0dc957ae2bd0873d411529fe1be27f466e4c0"
+    },
+    {
+      "original_path": "curvature/lenet5.py",
+      "archived_path": "archive/legacy/curvature/lenet5.py",
+      "sha256": "0d146afc324dd1b7cbb4a28326b6a6063260343bd0856fdeaee47ff3868b4bcb"
+    },
+    {
+      "original_path": "curvature/lenet5_mnist.pth",
+      "archived_path": "archive/legacy/curvature/lenet5_mnist.pth",
+      "sha256": "221def92f84b4be91f03622b7c88984f6f4b6b8fbfbe35d052675b0a92763b13"
+    },
+    {
+      "original_path": "curvature/resnet.py",
+      "archived_path": "archive/legacy/curvature/resnet.py",
+      "sha256": "b6a9a9a4c14075e7c54d43ad1bcaaba8df8c2b776a6a20bfe6cbacb81c8c8199"
+    },
+    {
+      "original_path": "curvature/utils.py",
+      "archived_path": "archive/legacy/curvature/utils.py",
+      "sha256": "fb85a9d56ecd2f6ec47aa3de11742081c1e89627275d71d15625baf140c65c15"
+    }
+  ]
+}
