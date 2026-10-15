@@ -19,7 +19,8 @@ Python 3.12+; CPU is sufficient. From the repository root:
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-python -m pip install -e '.[dev,fast-marching,plot]'
+python -m pip install -e '.[dev,fast-marching,plot,notebooks]'
+python -m ipykernel install --sys-prefix --name laplace-hypopinn
 python -m pytest -q
 ```
 
@@ -81,7 +82,7 @@ contracts](docs/architecture.md), [reproducibility and paper differences](docs/r
 [performance](docs/performance.md), and the executable [observed-data example](examples/extend_research.py).
 Coordinates are `(z,x)` in km, velocity km/s, and travel time seconds.
 
-For archival execution install `'.[notebooks]'` and follow the
+For historical notebook execution follow the
 [archive runner instructions](archive/README.md). Cite Izzatullah et al. (2022),
 *Laplace HypoPINN*, [DOI: 10.1088/2632-2153/ac94b3](https://doi.org/10.1088/2632-2153/ac94b3);
 see [citation metadata](CITATION.cff). Archival preservation grants no additional

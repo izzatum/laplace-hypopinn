@@ -89,7 +89,10 @@ for legacy diagonal, diagonal/block/full GGN, KFAC, EFB, INF and VaLLA.
 parameter draws, grid minima and field moments, without retaining every field.
 `save_posterior_fields=True` explicitly writes a disk-backed posterior field
 store. Random streams, precision factors, device and dtype belong to run state.
-The reported locations are discrete grid minima; resolution affects localization.
+VaLLA's QR/projection and compact variance/KL algebra explicitly use float64 on
+the model's device; public results retain model dtype. The
+[method reference](methods.md) records this numerical policy. The reported
+locations are discrete grid minima; resolution affects localization.
 
 ## Saved artifacts and plotting
 
@@ -106,9 +109,10 @@ publishes completed artifacts. Each run contains:
 
 Arrays additionally contain truth/reference fields when supplied, and posterior
 locations, mean/std locations and streamed field moments when sampled. EX1 writes
-separate initialization subdirectories. Source revision/dirty status, dependency
-versions and model identity accompany outputs; a custom callable's recorded name
-is provenance, not serialized source code. Retain custom code to reproduce it.
+separate initialization subdirectories. A source-tree hash, source revision when
+available, dependency versions and model identity accompany outputs. A custom
+callable's recorded name is provenance, not serialized source code. Retain custom
+code to reproduce it.
 
 `plotting.plot_run(run_directory, output_directory=None)` reads these saved arrays
 and optional history, imports Matplotlib lazily and returns PNG paths. The default
