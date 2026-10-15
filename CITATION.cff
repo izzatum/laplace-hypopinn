@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "Please cite the original Laplace HypoPINN article when using these research notebooks or their maintained implementation. Cite the relevant approximation sources for added research methods; see docs/methods.md."
+type: software
+title: "Laplace HypoPINN"
+authors:
+  - family-names: Izzatullah
+    given-names: Muhammad
+repository-code: "https://github.com/izzatum/laplace-hypopinn"
+preferred-citation:
+  type: article
+  title: "Laplace HypoPINN: physics-informed neural network for hypocenter localization and its predictive uncertainty"
+  authors:
+    - family-names: Izzatullah
+      given-names: Muhammad
+    - family-names: Yildirim
+      given-names: Isa Eren
+    - family-names: Waheed
+      given-names: Umair Bin
+    - family-names: Alkhalifah
+      given-names: Tariq
+  journal: "Machine Learning: Science and Technology"
+  volume: "3"
+  issue: "4"
+  start: "045001"
+  year: 2022
+  doi: "10.1088/2632-2153/ac94b3"
+  url: "https://doi.org/10.1088/2632-2153/ac94b3"
