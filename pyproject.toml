@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laplace-hypopinn"
+version = "0.1.0"
+description = "Functional physics-informed hypocenter inversion and Laplace approximations"
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.26,<3", "torch>=2.5,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.9", "build>=1.2"]
+fast-marching = ["scikit-fmm>=2024.5.29"]
+plot = ["matplotlib>=3.8"]
+notebooks = [
+    "nbclient>=0.10", "nbformat>=5.10", "ipykernel>=6", "matplotlib>=3.8",
+    "scipy>=1.12", "pandas>=2", "scikit-fmm>=2024.5.29", "tqdm>=4.66",
+    "torchinfo>=1.8", "psutil>=5.9",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["archive"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
