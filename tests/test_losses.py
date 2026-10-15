@@ -162,3 +162,18 @@ def test_observed_only_problem_needs_no_reference_or_true_source():
         sum(entry.coordinates.shape[0] for entry in make_residual_plan(observed, TrainingConfig()))
         == 8
     )
+
+
+@pytest.mark.parametrize('requires_grad', [False, True])
+def test_custom_coordinate_independent_model_has_zero_coordinate_gradient(requires_grad):
+    from laplace_hypopinn.losses import loss_terms
+
+    _, batch = example()
+    parameters = {'bias': torch.tensor(.2, dtype=torch.float64, requires_grad=requires_grad)}
+    def constant(parameters, coordinates):
+        return parameters['bias'].expand(coordinates.shape[0])
+    terms = loss_terms(parameters, batch, TrainingConfig(), forward=constant)
+    torch.testing.assert_close(terms.pde, batch.velocity.pow(-4).mean())
+    if requires_grad:
+        gradient = torch.autograd.grad(terms.total, parameters['bias'])[0]
+        torch.testing.assert_close(gradient, 2*(parameters['bias']-batch.receiver_times.mean()))

@@ -93,6 +93,49 @@ def test_default_mish_network_matches_notebook_updates():
         torch.testing.assert_close(result.parameters[name], reference[name], rtol=1e-11, atol=1e-13)
 
 
+def test_float32_full_ex2_batch_matches_notebook_gradients_and_short_trajectory():
+    """Shared collocation graph matters: equivalent separate forwards round differently."""
+    from reference.notebook_adapter import definitions
+    from laplace_hypopinn.data import prepare_problem, sample_training_batch
+    from laplace_hypopinn.losses import loss_terms
+    from laplace_hypopinn.presets import load_preset
+
+    config = load_preset('ex2')
+    streams = RandomStreams(config.seed)
+    parameters = initialize_model(streams=streams)
+    batch = sample_training_batch(prepare_problem(config), 2501, streams)
+    namespace = definitions('EX_2.ipynb', names=('PINN', 'LossEikonal'))
+    namespace['ag'] = torch.autograd
+    with torch.random.fork_rng():
+        reference = namespace['PINN']()
+    reference.load_state_dict(dict(zip(reference.state_dict(), parameters.values(), strict=True)))
+    system = namespace['LossEikonal']()
+    optimizer = torch.optim.Adam(reference.parameters(), lr=.005, betas=(.5, .9))
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=3001)
+    args = {'input': batch.coordinates.clone().requires_grad_(),
+            'vel': batch.velocity[:, None], 'data_pts': batch.receiver_coordinates,
+            'data': batch.receiver_times[:, None]}
+    expected = system(reference, args)[0]
+    actual = loss_terms(parameters, batch, config.training).total
+    expected_grad = torch.autograd.grad(expected, tuple(reference.parameters()))
+    actual_grad = torch.autograd.grad(actual, tuple(parameters.values()))
+    for left, right in zip(actual_grad, expected_grad, strict=True):
+        torch.testing.assert_close(left, right, rtol=0, atol=0)
+    expected_history = []
+    for _ in range(20):
+        loss, _, _ = system(reference, args)
+        expected_history.append(loss.item())
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad()
+    from dataclasses import replace
+    result = train(parameters, batch, replace(config.training, log_every=1), streams, stop_after=20)
+    assert [record['total'] for record in result.history] == expected_history
+    for left, right in zip(result.parameters.values(), reference.parameters(), strict=True):
+        torch.testing.assert_close(left, right, rtol=0, atol=0)
+
+
 def test_nonfinite_error_identifies_update_step():
     parameters, batch = example()
     def bad_forward(parameters, coordinates):
