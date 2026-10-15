@@ -213,3 +213,90 @@ def test_fit_reports_actual_roundoff_variance_correction():
     assert posterior.metadata['variance_clipped_count'] == 0
     assert posterior.metadata['variance_clipped_magnitude'] == 0
     assert posterior.metadata['variance_roundoff_tolerance'] > 0
+
+
+@pytest.mark.parametrize('dtype', [torch.float32, torch.float64])
+@pytest.mark.parametrize('jacobian_magnitude', [1e4, 1e10])
+@pytest.mark.parametrize('factor_value', [.5, .9, 1.])
+def test_strongly_informed_variance_and_objective_gradient(dtype, jacobian_magnitude, factor_value):
+    from laplace_hypopinn.curvature.residuals import ResidualBatch
+    from laplace_hypopinn.curvature.valla import build_valla_cache, valla_objective, valla_terms
+    parameters = {'weight': torch.tensor(0., dtype=dtype)}
+    def scalar_model(values, coordinates):
+        return values['weight']*coordinates[:, 0]
+    batch = ResidualBatch('data', torch.tensor([[jacobian_magnitude, 0.]], dtype=dtype),
+                          torch.zeros(1, dtype=dtype), torch.ones(1, dtype=dtype))
+    config = LaplaceConfig(method='valla', inducing_count=1)
+    cache = build_valla_cache(parameters, (batch,), config, RandomStreams(5), forward=scalar_model)
+    factor = torch.tensor([[factor_value]], dtype=dtype, requires_grad=True)
+    variance, _ = valla_terms(factor, cache, 1.)
+    gradient = torch.autograd.grad(valla_objective(factor, cache, 1., 0), factor)[0]
+    # Independent scalar closed form; avoid a subtraction of two large kernel terms.
+    j2 = jacobian_magnitude**2
+    precision = 1+j2*factor_value**2
+    expected_variance = j2/precision
+    expected_gradient = -j2*j2*factor_value/precision**2+j2*factor_value/precision-j2*factor_value/precision**2
+    tolerance = 2e-5 if dtype == torch.float32 else 2e-12
+    torch.testing.assert_close(variance, torch.tensor([expected_variance], dtype=dtype),
+                               atol=tolerance, rtol=tolerance)
+    torch.testing.assert_close(gradient, torch.tensor([[expected_gradient]], dtype=dtype),
+                               atol=tolerance, rtol=tolerance)
+
+
+@pytest.mark.parametrize('dtype', [torch.float32, torch.float64])
+@pytest.mark.parametrize('parameter_count', [1, 2, 4])
+def test_strong_rank_deficient_inducing_features_preserve_prior_directions(dtype, parameter_count):
+    from laplace_hypopinn.curvature.residuals import ResidualBatch
+    from laplace_hypopinn.curvature.valla import build_valla_cache, valla_terms
+    parameters = {'weights': torch.zeros(parameter_count, dtype=dtype)}
+    def rank_one_model(values, coordinates):
+        return values['weights'].sum()*coordinates[:, 0]
+    magnitude = 1e10
+    batch = ResidualBatch('data', torch.tensor([[magnitude, 0.], [magnitude, 0.]], dtype=dtype),
+                          torch.zeros(2, dtype=dtype), torch.ones(2, dtype=dtype))
+    cache = build_valla_cache(parameters, (batch,), LaplaceConfig(method='valla', inducing_count=2),
+                              RandomStreams(5), forward=rank_one_model)
+    factor = (torch.eye(2, dtype=dtype)*.5).requires_grad_()
+    variance, kl = valla_terms(factor, cache, 1.)
+    j2 = parameter_count*magnitude**2
+    informed_precision = 1+.5*j2
+    torch.testing.assert_close(variance, torch.full((2,), j2/informed_precision, dtype=dtype),
+                               atol=2e-5, rtol=2e-5)
+    expected_kl = .5*(torch.log(torch.tensor(informed_precision, dtype=torch.float64))-1+1/informed_precision)
+    torch.testing.assert_close(kl, expected_kl.to(dtype), atol=2e-5, rtol=2e-5)
+    gradient = torch.autograd.grad(.5*variance.sum()+kl, factor)[0]
+    assert torch.isfinite(gradient).all()
+    assert gradient.abs().sum() > 0
+
+
+@pytest.mark.parametrize('dtype', [torch.float32, torch.float64])
+def test_large_informed_projection_preserves_uninformed_query_variance(dtype):
+    from laplace_hypopinn.curvature.residuals import ResidualBatch
+    from laplace_hypopinn.curvature.valla import build_valla_cache, valla_terms
+    parameters = {'weights': torch.zeros(3, dtype=dtype)}
+    def mixed_features(values, coordinates):
+        return (values['weights'][0]+values['weights'][1])*coordinates[:, 0]+values['weights'][2]*coordinates[:, 1]
+    magnitude = 1e10
+    batch = ResidualBatch('data', torch.tensor([[magnitude, 0.], [magnitude, 2.]], dtype=dtype),
+                          torch.zeros(2, dtype=dtype), torch.ones(2, dtype=dtype))
+    cache = build_valla_cache(parameters, (batch,), LaplaceConfig(method='valla', inducing_count=1),
+                              RandomStreams(1), forward=mixed_features)
+    assert cache.inducing_identities == ((0, 'data', 0),)
+    variance, _ = valla_terms(torch.full((1, 1), .5, dtype=dtype), cache, 1.)
+    informed = 2*magnitude**2/(1+.5*magnitude**2)
+    torch.testing.assert_close(variance, torch.tensor([informed, informed+4], dtype=dtype),
+                               atol=2e-5, rtol=2e-5)
+
+
+def test_cache_guard_accounts_for_augmented_precision_square_root():
+    from laplace_hypopinn.curvature.residuals import ResidualBatch
+    from laplace_hypopinn.curvature.valla import build_valla_cache
+    parameters = {'weights': torch.zeros(2, dtype=torch.float32)}
+    def linear(values, coordinates):
+        return coordinates@values['weights']
+    batch = ResidualBatch('data', torch.eye(2, dtype=torch.float32),
+                          torch.zeros(2), torch.ones(2))
+    # 2x2 caches fit in 32 work-dtype bytes; the 4x2 augmented QR does not.
+    config = LaplaceConfig(method='valla', inducing_count=2, chunk_size=2, max_dense_bytes=32)
+    with pytest.raises(MemoryError):
+        build_valla_cache(parameters, (batch,), config, RandomStreams(5), forward=linear)

@@ -39,6 +39,9 @@ class VaLLACache:
     inducing_jacobian: Tensor
     inducing_identities: tuple[tuple[int, str, int], ...]
     prior_precision: float
+    inducing_features: Tensor
+    feature_projection: Tensor
+    perpendicular_variance: Tensor
 
 
 def _positive_count(value, name):
@@ -50,8 +53,12 @@ def build_valla_cache(parameters, residual_plan, config, streams, *, forward=pre
     """Select fixed distinct rows with the local NumPy stream and stream caches.
 
     Only inducing rows (M by P), one bounded Jacobian chunk, residual means,
-    prior variance diagonals and N by M cross-kernel rows are retained. This
-    function snapshots caller tensors and never differentiates the fixed MAP.
+    prior variance diagonals and N by M cross-kernel rows are retained. Additional
+    N by min(M,P) feature projections and perpendicular norms permit positive
+    variance evaluation without subtracting nearly equal large kernels. QR and
+    variance algebra explicitly use float64 on the original device, including
+    for float32 models. Public results and posterior tensors retain model dtype.
+    This function snapshots tensors and never differentiates the fixed MAP.
     """
     require_scalar(config.prior_precision, 'prior_precision', positive=True)
     require_scalar(config.scale, 'scale', positive=True)
@@ -72,9 +79,11 @@ def build_valla_cache(parameters, residual_plan, config, streams, *, forward=pre
     if total < 1:
         raise ValueError('VaLLA requires at least one residual row')
     count = min(config.inducing_count, total)
+    feature_count = min(count, layout.numel)
     for numel in (count*layout.numel, total*count, count*count,
-                  min(total, config.chunk_size)*layout.numel, total):
-        guard_dense(numel, mean.dtype, config.max_dense_bytes)
+                  min(total, config.chunk_size)*layout.numel, total,
+                  (count+feature_count)*feature_count):
+        guard_dense(numel, torch.float64, config.max_dense_bytes)
     selected = sorted(int(i) for i in streams.numpy.choice(total, count, replace=False))
     inducing, identities = [], []
     offset = 0
@@ -93,10 +102,17 @@ def build_valla_cache(parameters, residual_plan, config, streams, *, forward=pre
     inducing = torch.cat(inducing)
     prior = float(config.prior_precision)
     kernel_zz = inducing@inducing.T/prior
+    # Store compact Householder reflectors, never the P by P orthogonal matrix.
+    # QR is fixed; only the later small factor-space algebra is differentiated.
+    packed, tau = torch.geqrf(inducing.T.to(torch.float64)/math.sqrt(prior))
+    reflectors = packed[:, :feature_count].contiguous()
+    inducing_features = packed[:feature_count].triu().contiguous()
     # Preallocate only the permitted O(N M) and O(N) persistent caches.
     cross = mean.new_empty((total, count))
     variance = mean.new_empty(total)
     residual_mean = mean.new_empty(total)
+    projection = torch.empty((total, feature_count), dtype=torch.float64, device=mean.device)
+    perpendicular = torch.empty(total, dtype=torch.float64, device=mean.device)
     offset = 0
     for batch in plan:
         for chunk_index, rows in enumerate(iter_jacobians(
@@ -111,19 +127,30 @@ def build_valla_cache(parameters, residual_plan, config, streams, *, forward=pre
             cross[target] = rows@inducing.T/prior
             variance[target] = rows.square().sum(1)/prior
             residual_mean[target] = residual*subset.alpha.sqrt()*scale_root
+            transformed = torch.ormqr(reflectors, tau,
+                                      (rows.to(torch.float64)/math.sqrt(prior)).T.contiguous(),
+                                      left=True, transpose=True)
+            projection[target] = transformed[:feature_count].T
+            perpendicular[target] = transformed[feature_count:].square().sum(0)
         offset += batch.alpha.numel()
     if not all(torch.isfinite(value).all() for value in
-               (inducing, kernel_zz, cross, variance, residual_mean)):
+               (inducing, kernel_zz, cross, variance, residual_mean,
+                inducing_features, projection, perpendicular)):
         raise ValueError('VaLLA residual means or Jacobians contain nonfinite values')
     return VaLLACache(residual_mean, variance, cross, kernel_zz, inducing,
-                      tuple(identities), prior)
+                      tuple(identities), prior, inducing_features, projection, perpendicular)
 
 
 def valla_terms(factor, cached_batch, prior_precision, *, return_diagnostics=False):
     """Return function variance diagonals and the covariance-dependent Gaussian KL.
 
-    H=I+L.T Kzz L, A=L solve(H,L.T). Cholesky solves avoid inverses;
-    the returned KL omits only fixed mean terms. Upper factor entries are ignored.
+    If Jz.T/sqrt(prior)=Q R, the feature precision is S=I+R L L.T R.T.
+    Variance is ||q_perp||^2 + q_core.T solve(S,q_core), a sum of positive
+    norms. An augmented QR provides its triangular precision square root without
+    forming a possibly ill-conditioned Gram matrix. This is algebraically the
+    author's H/A covariance and KL, with no large-kernel subtraction. Fixed
+    float64 work preserves gradients for strongly informed float32 models; the
+    returned tensors retain factor dtype. Upper factor entries are ignored.
     """
     require_scalar(prior_precision, 'prior_precision', positive=True)
     if float(prior_precision) != cached_batch.prior_precision:
@@ -133,13 +160,16 @@ def valla_terms(factor, cached_batch, prior_precision, *, return_diagnostics=Fal
         raise ValueError('variational factor must be a finite inducing-by-inducing matrix')
     if factor.dtype != cached_batch.kernel_zz.dtype or factor.device != cached_batch.kernel_zz.device:
         raise ValueError('variational factor and cache dtype/device must match')
-    lower = factor.tril()
-    identity = torch.eye(size, dtype=lower.dtype, device=lower.device)
-    hessian = identity+lower.T@cached_batch.kernel_zz@lower
-    cholesky = torch.linalg.cholesky((hessian+hessian.T)/2)
-    cross_lower = cached_batch.kernel_xz@lower
-    solved = torch.linalg.solve_triangular(cholesky, cross_lower.T, upper=False)
-    variance = cached_batch.prior_variance-solved.square().sum(0)
+    lower = factor.tril().to(torch.float64)
+    core = cached_batch.inducing_features@lower
+    feature_count = core.shape[0]
+    identity = torch.eye(feature_count, dtype=lower.dtype, device=lower.device)
+    # The identity rows preserve prior directions even when core is rank deficient
+    # and its norm is too large for I + core@core.T to represent the prior.
+    _, precision_root = torch.linalg.qr(torch.cat((core.T, identity)), mode='reduced')
+    solved = torch.linalg.solve_triangular(precision_root.T,
+                                           cached_batch.feature_projection.T, upper=False)
+    variance = cached_batch.perpendicular_variance+solved.square().sum(0)
     tolerance = 50*size*torch.finfo(variance.dtype).eps*cached_batch.prior_variance.max()
     if (variance < -tolerance).any() or not torch.isfinite(variance).all():
         raise ValueError('VaLLA covariance has material negative or nonfinite variance')
@@ -148,10 +178,10 @@ def valla_terms(factor, cached_batch, prior_precision, *, return_diagnostics=Fal
         'variance_clipped_magnitude': float((-variance.clamp_max(0)).sum().detach()),
         'variance_roundoff_tolerance': float(tolerance.detach()),
     } if return_diagnostics else None
-    # The subtraction can lose roundoff digits for strongly informed directions.
-    variance = variance.clamp_min(0)
-    a_matrix = lower@torch.cholesky_solve(lower.T, cholesky)
-    kl = .5*(2*cholesky.diag().log().sum()-(cached_batch.kernel_zz*a_matrix.T).sum())
+    inverse_root = torch.linalg.solve_triangular(precision_root, identity, upper=True)
+    kl = .5*(2*precision_root.diag().abs().log().sum()-feature_count
+             +inverse_root.square().sum())
+    variance, kl = variance.to(factor.dtype), kl.to(factor.dtype)
     return (variance, kl, diagnostics) if return_diagnostics else (variance, kl)
 
 
@@ -210,7 +240,8 @@ def fit_valla(parameters, residual_plan, config, streams, *, forward=predict):
         'citation': 'Ortega et al., Variational Linearized Laplace Approximation, ICML 2024',
         'citation_url': 'https://proceedings.mlr.press/v235/ortega24a.html',
         'adaptation_limits': 'Fixed inducing PINN residual functionals; no inducing/hyperparameter optimization or publication benchmark claim',
-        'variance_roundoff_policy': 'Clamp only negatives within 50*M*eps*max(prior_variance)',
+        'variance_roundoff_policy': 'Positive QR feature-space variance; no subtractive cancellation or clipping',
+        'variance_work_dtype': 'float64 (same device); public results retain model dtype',
         'jitter': 0.,
     }
     return Posterior(mean, layout, 'low_rank', diagonal=torch.full_like(mean, config.prior_precision),
