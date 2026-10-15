@@ -5,6 +5,11 @@ The CPU reference environment is Python 3.12, PyTorch 2.5.1+cpu and NumPy
 and performance runs also exercise the notebook's 2,737-parameter Mish model.
 The architecture remains configurable.
 
+Final validation on 2026-10-15: **281 tests passed**, Ruff passed, and source
+and wheel distributions built successfully. Tests include independent curvature
+identities, archive hashes and selected-cell execution, custom/frozen models,
+checkpoint continuation, plots, and installed-wheel CLI runs outside the checkout.
+
 Run the full EX2 comparison (3,001 training updates, 1,000 historical diagonal
 batches of 2,501 points, and 1,000 posterior samples):
 
