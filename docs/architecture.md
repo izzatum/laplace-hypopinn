@@ -61,8 +61,8 @@ snapshots an eval-mode `torch.nn.Module`, including isolated buffers, into this
 interface using `torch.func.functional_call`. Only trainable parameters enter the
 optimization and posterior layout; frozen parameters remain isolated constants
 that are copied for each call, and models with no trainable parameters are rejected.
-The caller supplies the module's initialization and matching dtype/device. See the [README example](../README.md)
-and [custom observed-data experiment](../examples/extend_research.py).
+The caller supplies the module's initialization and matching dtype/device. See the
+[custom observed-data experiment](../examples/extend_research.py) for a complete example.
 
 Generic legacy diagonal, direct GGN and VaLLA paths use functional derivatives.
 Structured KFAC/EFB/INF require supported affine/activation coordinate jets or an

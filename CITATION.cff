@@ -1,6 +1,7 @@
 cff-version: 1.2.0
-message: "Please cite the original Laplace HypoPINN article when using these research notebooks or their maintained implementation. Cite the relevant approximation sources for added research methods; see docs/methods.md."
+message: "Please cite the original Laplace HypoPINN article when using these research notebooks or their maintained implementation. Cite the relevant approximation sources for added research methods; see docs/methods.md. The MIT license metadata covers the maintained software; see THIRD_PARTY_NOTICES.md for archive and data scope."
 type: software
+license: MIT
 title: "Laplace HypoPINN"
 authors:
   - family-names: Izzatullah
