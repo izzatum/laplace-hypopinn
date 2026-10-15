@@ -114,3 +114,75 @@ def test_layout_rejects_wrong_size_and_initialization_validation():
         initialize_model((2, 1), "unknown", RandomStreams(1))
     with pytest.raises(ValueError, match="activation"):
         make_mlp_forward("relu")
+
+
+def test_custom_module_with_mlp_names_and_arbitrary_tensor_shapes_roundtrips():
+    class Cubic(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.weight = nn.Parameter(torch.arange(8, dtype=torch.float64).reshape(2, 2, 2) / 10)
+            self.bias = nn.Parameter(torch.tensor(0.3, dtype=torch.float64))
+
+        def forward(self, x):
+            return (torch.einsum("ni,nj,nk,ijk->n", x, x, x, self.weight) + self.bias)[:, None]
+
+    class PointwiseModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layers = nn.ModuleList([Cubic()])
+
+        def forward(self, x):
+            return self.layers[0](x)
+
+    module = PointwiseModel().eval()
+    parameters, forward = module_adapter(module)
+    original = {name: value.clone() for name, value in parameters.items()}
+    coordinates = torch.tensor([[0.2, 0.7], [0.5, 0.8]], dtype=torch.float64, requires_grad=True)
+    expected = forward(parameters, coordinates)
+    expected_gradients = torch.autograd.grad(expected.sum(), (*parameters.values(), coordinates))
+    vector, layout = flatten_parameters(parameters)
+    assert all(block.kind == "tensor" for block in layout.blocks)
+    restored = unflatten_parameters(vector, layout)
+    actual = forward(restored, coordinates)
+    actual_gradients = torch.autograd.grad(actual.sum(), (*parameters.values(), coordinates))
+    torch.testing.assert_close(actual, expected)
+    for actual_gradient, expected_gradient in zip(
+        actual_gradients, expected_gradients, strict=True
+    ):
+        torch.testing.assert_close(actual_gradient, expected_gradient)
+    for name in parameters:
+        assert torch.equal(parameters[name], restored[name])
+        assert torch.equal(parameters[name], original[name])
+
+
+def test_disconnected_linear_shapes_use_generic_layout():
+    parameters = {
+        "layers.0.weight": torch.ones(3, 2, dtype=torch.float64, requires_grad=True),
+        "layers.0.bias": torch.ones(3, dtype=torch.float64, requires_grad=True),
+        "layers.1.weight": torch.ones(1, 4, dtype=torch.float64, requires_grad=True),
+        "layers.1.bias": torch.ones(1, dtype=torch.float64, requires_grad=True),
+    }
+    vector, layout = flatten_parameters(parameters)
+    assert all(block.kind == "tensor" for block in layout.blocks)
+    restored = unflatten_parameters(vector, layout)
+    for name in parameters:
+        assert torch.equal(restored[name], parameters[name])
+    with pytest.raises(ValueError, match="MLP"):
+        predict(parameters, torch.ones(2, 2, dtype=torch.float64))
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        {},
+        {"layers.0.weight": torch.ones(1, 2, 2), "layers.0.bias": torch.tensor(0.0)},
+        {
+            "layers.0.weight": torch.ones(1, 2),
+            "layers.0.bias": torch.ones(1),
+            "extra": torch.ones(1),
+        },
+    ],
+)
+def test_default_mlp_predict_rejects_invalid_mapping(parameters):
+    with pytest.raises(ValueError, match="MLP"):
+        predict(parameters, torch.ones(2, 2))

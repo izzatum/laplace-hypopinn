@@ -50,7 +50,36 @@ def initialize_model(
     return {name: value.requires_grad_() for name, value in parameters.items()}
 
 
+def _has_connected_linear_shapes(parameters):
+    """Recognize linear layer structure without assigning semantics to names alone."""
+    if not parameters or len(parameters) % 2:
+        return False
+    expected_names = tuple(
+        name
+        for i in range(len(parameters) // 2)
+        for name in (f"layers.{i}.weight", f"layers.{i}.bias")
+    )
+    if set(parameters) != set(expected_names):
+        return False
+    previous_outputs = None
+    for i in range(len(parameters) // 2):
+        weight, bias = parameters[f"layers.{i}.weight"], parameters[f"layers.{i}.bias"]
+        if weight.ndim != 2 or bias.shape != (weight.shape[0],) or min(weight.shape) <= 0:
+            return False
+        if previous_outputs is not None and weight.shape[1] != previous_outputs:
+            return False
+        previous_outputs = weight.shape[0]
+    return True
+
+
 def _mlp_predict(parameters, coordinates, activation):
+    if not _has_connected_linear_shapes(parameters):
+        raise ValueError("MLP parameters require complete connected linear weight/bias pairs")
+    if (
+        parameters["layers.0.weight"].shape[1] != 2
+        or parameters[f"layers.{len(parameters) // 2 - 1}.weight"].shape[0] != 1
+    ):
+        raise ValueError("MLP must map two coordinates to one scalar")
     hidden = coordinates
     count = len(parameters) // 2
     for i in range(count):
@@ -116,7 +145,7 @@ def flatten_parameters(parameters: Mapping[str, Tensor]) -> tuple[Tensor, Parame
         raise ValueError("parameter mapping must be nonempty")
     names = tuple(parameters)
     pieces, blocks = [], []
-    mlp = names == tuple(
+    mlp = _has_connected_linear_shapes(parameters) and names == tuple(
         name for i in range(len(names) // 2) for name in (f"layers.{i}.weight", f"layers.{i}.bias")
     )
     start = 0
@@ -124,8 +153,6 @@ def flatten_parameters(parameters: Mapping[str, Tensor]) -> tuple[Tensor, Parame
         for i in range(len(names) // 2):
             weight_name, bias_name = f"layers.{i}.weight", f"layers.{i}.bias"
             weight, bias = parameters[weight_name], parameters[bias_name]
-            if weight.ndim != 2 or bias.shape != (weight.shape[0],):
-                raise ValueError("MLP weight/bias shapes are inconsistent")
             piece = torch.cat((weight, bias[:, None]), dim=1)
             stop = start + piece.numel()
             blocks.append(
