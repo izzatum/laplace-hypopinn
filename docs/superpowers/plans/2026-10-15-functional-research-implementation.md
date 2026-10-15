@@ -202,5 +202,7 @@ shared sequential prerequisites; only independent work after those contracts are
 stable should run concurrently. Method covariance mistakes can produce plausible
 plots, so independent mathematical review is worth the extra review cost.
 
-The plan is prepared for user review. Product implementation begins after the
-required plan review and execution-method selection.
+The user approved this plan and requires flexible models. Implementation uses
+the recommended subagent-driven approach. Named parameter mappings and custom
+forward adapters supersede the earlier fixed layer tuple in all interfaces;
+notebook architecture is retained only as an example preset and test fixture.

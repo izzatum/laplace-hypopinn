@@ -170,6 +170,7 @@ def _provenance():
     except importlib.metadata.PackageNotFoundError:
         version = 'uninstalled-source'
     revision = None
+    dirty = None
     source_digest = hashlib.sha256()
     package_root = Path(__file__).resolve().parent
     for source_path in sorted(package_root.rglob('*.py')):
@@ -180,9 +181,12 @@ def _provenance():
         try:
             revision = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=source_root,
                                       capture_output=True, text=True, check=True).stdout.strip()
+            dirty = bool(subprocess.run(['git', 'status', '--porcelain'], cwd=source_root,
+                                        capture_output=True, text=True, check=True).stdout.strip())
         except (OSError, subprocess.CalledProcessError):
             pass
     return {'package_version': version, 'source_revision': revision,
+            'source_dirty': dirty,
             'source_tree_sha256': source_digest.hexdigest(),
             'torch_version': torch.__version__, 'numpy_version': np.__version__,
             'python_version': platform.python_version(),

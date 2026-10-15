@@ -38,8 +38,14 @@ Alternatives considered:
 - Build a general plugin framework for solvers and estimators: flexible, but imposes
   abstractions and maintenance beyond the demonstrated research scope.
 
-A typed callable for a forward model or velocity generator provides the useful
-extension point without the general framework.
+The user explicitly requires an open model architecture. Depth, width and
+activation are configurable, and custom differentiable pointwise scalar models
+can supply a functional callable or an nn.Module adapter. Named arbitrary tensor
+parameter mappings replace the original fixed layer tuple. The notebook network
+is a preset and regression fixture only. Generic Jacobian estimators support
+custom models; structured jet methods require a declared compatible adapter and
+report unsupported architectures clearly. No model size is hardcoded in the
+numerical algorithms; memory guards are explicit configurable budgets.
 
 ## Package boundaries and public API
 
