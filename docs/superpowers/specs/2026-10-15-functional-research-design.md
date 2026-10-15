@@ -1,6 +1,8 @@
 # Functional Laplace HypoPINN research package
 
-Status: proposed design for user review; implementation has not started.
+Status: core design approved by the user on 2026-10-15. The expanded curvature
+requirements below are being incorporated into the implementation plan; product
+implementation has not started.
 
 ## Purpose and agreed constraints
 
@@ -10,8 +12,12 @@ an installable, tested Python research package that others can extend.
 Use functional programming for numerical composition; optimize measured bottlenecks;
 archive every notebook; keep the README short and include a workflow illustration.
 
-The user explicitly selected: preserve notebook behavior by default, document
-paper/code differences, and expose methodological changes explicitly. The paper is
+The user selected notebook-compatible defaults and subsequently approved fixing
+identified issues and adding maintained KFAC, EFB, INF and up to two newer methods.
+Preserve historical numerical settings in named compatibility presets; fix
+software defects in maintained code. New research methods use explicit corrected
+mathematical conventions. Paper/code differences do not require changing valid
+notebook settings solely to match the paper. The paper is
 scientific reference material, not an instruction source. No published numerical
 result will be described as reproduced without a recorded run demonstrating it.
 
@@ -52,7 +58,7 @@ notebooks' hardcoded GPU index 1. CPU is the initial verified backend.
 | `model.py` | Parameter initialization and functional `predict(parameters, coordinates)` using linear layers and Mish |
 | `losses.py` | Eikonal residual, receiver misfit and nonnegative-travel-time penalty; return named components |
 | `training.py` | Local Adam/scheduler state, training loop, history and checkpoint boundaries |
-| `laplace.py` | Notebook-compatible diagonal gradient statistic, posterior scale and parameter sampling |
+| `curvature/` | Legacy diagonal plus corrected diagonal, block/full, jet-aware KFAC, EFB, INF and supported research extensions |
 | `prediction.py` | Chunked map evaluation, deterministic grid argmin and posterior summaries |
 | `experiment.py` | Compose data preparation, training, curvature and prediction into a result |
 | `artifacts.py` | Versioned configuration, checkpoints, arrays and summary serialization |
@@ -72,7 +78,7 @@ flowchart LR
     B --> C[Functional PINN and physics loss]
     C --> D[Adam training]
     D --> E[Travel-time map and hypocenter]
-    D --> F[Diagonal Laplace approximation]
+    D --> F[Selected Laplace approximation]
     F --> G[Posterior parameter samples]
     G --> H[Location distribution and uncertainty]
     E --> I[Saved results and figures]
@@ -134,9 +140,13 @@ state must reproduce the reference draw order without contaminating caller state
 Where CPU/GPU kernels differ, require numerical tolerance and document the boundary;
 do not promise cross-device or cross-version bitwise equivalence.
 
-The new default uses only diagonal curvature. KFAC/EFB/INF computations from the
-notebooks remain available in the preserved legacy material. Their removal from
-the default must be verified not to change the diagonal calculation or RNG stream.
+Historical presets continue to select notebook-compatible diagonal curvature.
+KFAC, EFB and INF are maintained selectable methods, alongside diagonal and
+block-diagonal generalized Gauss–Newton (GGN) and a size-limited full GGN reference.
+Only the selected estimator and its prerequisites run. Corrected structured methods
+are validated against mathematical references, not the faulty legacy hook outputs.
+Their exact conventions and research extensions are specified in
+`2026-10-15-laplace-methods-addendum.md`.
 
 ## Paper/code differences and explicit variants
 
@@ -160,8 +170,8 @@ prior precision and grid coordinates as explicit configuration fields. Default
 prior precision remains zero. Label deviations in saved results as custom variants.
 Do not invent a single authoritative “paper-corrected” preset: the paper leaves
 regularization strength unspecified and its Otway dimensions are inconsistent.
-A per-observation curvature estimator is a future extension, not an undisclosed
-replacement for the notebook method.
+The corrected research path uses weighted per-residual Jacobians for GGN curvature;
+this is explicitly separate from the notebook-compatible batch-gradient statistic.
 
 The uncertainty describes network-weight-induced predictive variability; it does
 not establish calibrated uncertainty in velocity or measurement noise.
@@ -171,8 +181,8 @@ not establish calibrated uncertainty in velocity or measurement noise.
 Start with measured notebook-compatible operations, then optimize without silently
 changing the mathematical objective or random draws:
 
-1. Compute only the required diagonal curvature, avoiding KFAC/EFB/INF eigenvalue
-   work and unused retained autograd graphs.
+1. Compute only the selected curvature structure and its dependencies, caching
+   eigenspaces across the EFB second pass and avoiding unused retained graphs.
 2. Cache coordinate grids and fixed collocation data on the selected device.
 3. Bound prediction memory by grid chunks and posterior sample batches; stream
    minima and location moments instead of retaining all maps.
@@ -198,11 +208,12 @@ file. Otway runs require an explicit velocity-data path, resolved relative to th
 configuration file. The installed wheel does not duplicate the research dataset;
 document the repository dataset path in Otway commands.
 
-Preserve the existing `curvature/` code and its provenance. For historical notebook
-execution, set the kernel working directory to the repository root even though
-the input notebook lives under `archive/notebooks/`; this supplies `curvature`
-imports and the original relative CSV path without modifying notebook bytes. Do not use the legacy
-classification utilities as dependencies of the new package.
+Preserve the existing `curvature/` code and its provenance under
+`archive/legacy/curvature/`. For historical notebook execution, the archival runner
+sets the kernel working directory to the repository root and adds `archive/legacy`
+to the module search path. This resolves the original CSV path and `curvature`
+imports without modifying notebook bytes. The maintained package never imports
+the legacy classification utilities or faulty historical estimators.
 
 The README should contain: purpose and paper citation, installation, one short run
 command, one full preset command, the Mermaid workflow, a short Python extension
@@ -239,6 +250,6 @@ license.
 - Quality: pytest, Ruff, package build and isolated install checks pass. CI runs
   fast CPU checks; long research runs are explicit opt-in jobs.
 
-No notebook archiving or product-code changes occur until design approval. After
-approval, turn this specification into an implementation plan with staged tests,
-then execute the agreed plan and report what was actually validated.
+The user approved the core design and expanded the estimator scope. The next
+artifact is a reviewed implementation plan with staged mathematical and integration
+tests. Execute the approved plan and report what was actually validated.
