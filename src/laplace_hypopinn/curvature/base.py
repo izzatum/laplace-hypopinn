@@ -59,6 +59,8 @@ class Posterior:
     ``blocks`` and ``factor`` contain lower Cholesky factors of precision;
     ``low_rank`` contains columns B for precision diag(diagonal) + B B.T.
     ``eigenbasis`` stores (output basis, augmented-input basis, precision eigenvalues).
+    Low-rank precision tensors are snapshots; their small solve factor is built once.
+    ``low_rank_jitter`` records any roundoff repair in that cached factor.
     """
 
     mean: Tensor
@@ -72,6 +74,9 @@ class Posterior:
     metadata: Mapping = field(default_factory=dict)
     forward: Forward = predict
     prediction_kind: str = 'travel_time'
+    _low_rank_scaled: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    _low_rank_factor: Tensor | None = field(default=None, init=False, repr=False, compare=False)
+    low_rank_jitter: float = field(default=0., init=False)
 
     def __post_init__(self):
         if self.mean.shape != (self.layout.numel,) or not torch.isfinite(self.mean).all():
@@ -101,6 +106,19 @@ class Posterior:
             if self.low_rank is None or self.low_rank.ndim != 2:
                 raise ValueError('low_rank must be a matrix')
             check(self.low_rank, (self.layout.numel, self.low_rank.shape[1]))
+            # Own the precision tensors so external changes cannot invalidate cached solves.
+            diagonal = self.diagonal.detach().clone()
+            columns = self.low_rank.detach().clone()
+            object.__setattr__(self, 'diagonal', diagonal)
+            object.__setattr__(self, 'low_rank', columns)
+            scaled = columns/diagonal[:, None]
+            object.__setattr__(self, '_low_rank_scaled', scaled)
+            rank = columns.shape[1]
+            if rank:
+                middle = torch.eye(rank, dtype=diagonal.dtype, device=diagonal.device)+columns.T@scaled
+                small_factor, jitter = cholesky_with_jitter(middle)
+                object.__setattr__(self, '_low_rank_factor', small_factor)
+                object.__setattr__(self, 'low_rank_jitter', jitter)
         elif self.representation == 'kronecker':
             if len(self.eigenbasis) != len(self.layout.blocks):
                 raise ValueError('eigenbasis blocks must match parameter layout')

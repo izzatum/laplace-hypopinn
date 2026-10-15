@@ -103,3 +103,57 @@ def test_kronecker_rotation_and_block_factor_roots():
     torch.testing.assert_close(sample_vectors(posterior, 1, RandomStreams(7)), expected)
     block = Posterior(mean, layout, 'block_diagonal', blocks=(torch.linalg.cholesky(precision),))
     torch.testing.assert_close(covariance_root(block)@covariance_root(block).T, root@root.T)
+
+
+@pytest.mark.parametrize('dtype', [torch.float32, torch.float64])
+@pytest.mark.parametrize('rank', [0, 2])
+def test_low_rank_factorization_is_built_once_and_reused(monkeypatch, dtype, rank):
+    from laplace_hypopinn.curvature import base, sampling
+    calls = []
+    original = base.cholesky_with_jitter
+
+    def counted(matrix):
+        calls.append(matrix.shape)
+        return original(matrix)
+
+    # Count only the small precision factorization; random draws stay real.
+    monkeypatch.setattr(base, 'cholesky_with_jitter', counted)
+    monkeypatch.setattr(sampling, 'cholesky_with_jitter', counted)
+    mean, layout = flatten_parameters({'w': torch.zeros(3, dtype=dtype)})
+    diagonal = torch.tensor([1., 2., 3.], dtype=dtype)
+    columns = torch.tensor([[.2, .3], [.4, -.5], [.6, .1]], dtype=dtype)[:, :rank]
+    original_diagonal, original_columns = diagonal.clone(), columns.clone()
+    global_rng = torch.random.get_rng_state().clone()
+    posterior = base.Posterior(mean, layout, 'low_rank', diagonal=diagonal, low_rank=columns)
+    expected_calls = [(rank, rank)] if rank else []
+    assert calls == expected_calls
+    first = sampling.sample_vectors(posterior, 2, RandomStreams(10))
+    second = sampling.sample_vectors(posterior, 1, RandomStreams(11))
+    assert calls == expected_calls
+    assert first.dtype == second.dtype == dtype
+    assert torch.isfinite(first).all() and torch.isfinite(second).all()
+    torch.testing.assert_close(torch.random.get_rng_state(), global_rng, rtol=0, atol=0)
+    torch.testing.assert_close(diagonal, original_diagonal)
+    torch.testing.assert_close(columns, original_columns)
+
+
+def test_low_rank_cache_is_isolated_from_caller_tensor_mutation():
+    from laplace_hypopinn.curvature.base import Posterior
+    from laplace_hypopinn.curvature.sampling import sample_vectors
+    mean, layout = flatten_parameters({'w': torch.zeros(2, dtype=torch.float64)})
+    diagonal = torch.tensor([1., 2.], dtype=mean.dtype)
+    columns = torch.tensor([[.2], [.3]], dtype=mean.dtype)
+    posterior = Posterior(mean, layout, 'low_rank', diagonal=diagonal, low_rank=columns)
+    expected = sample_vectors(posterior, 2, RandomStreams(10))
+    diagonal.fill_(5.)
+    columns.fill_(7.)
+    actual = sample_vectors(posterior, 2, RandomStreams(10))
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+
+def test_nonfinite_low_rank_middle_is_rejected_at_construction():
+    from laplace_hypopinn.curvature.base import Posterior
+    mean, layout = flatten_parameters({'w': torch.zeros(2, dtype=torch.float32)})
+    with pytest.raises(ValueError, match='finite'):
+        Posterior(mean, layout, 'low_rank', diagonal=torch.ones_like(mean),
+                  low_rank=torch.full((2, 1), 1e30, dtype=mean.dtype))

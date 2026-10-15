@@ -52,9 +52,8 @@ def sample_vectors(posterior, count, streams=None, *, generator=None):
         diagonal, columns = posterior.diagonal, posterior.low_rank
         rank = columns.shape[1]
         if rank:
-            scaled = columns/diagonal[:, None]
-            middle = torch.eye(rank, dtype=mean.dtype, device=mean.device)+columns.T@scaled
-            factor, _ = cholesky_with_jitter(middle)
+            scaled = posterior._low_rank_scaled
+            factor = posterior._low_rank_factor
         samples = []
         for _ in range(count):
             noise = normal((mean.numel(),))*diagonal.sqrt()
