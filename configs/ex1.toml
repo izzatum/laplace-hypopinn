@@ -1,0 +1,33 @@
+# Archived EX1 settings; budgets may be reduced for smoke tests.
+name = "ex1"
+seed = 4321
+dtype = "float32"
+device = "cpu"
+
+[model]
+widths = [2, 16, 16, 32, 32, 16, 16, 1]
+activation = "mish"
+initialization = "kaiming_normal"
+
+[data]
+kind = "gradient"
+source = [1.0, 1.5]
+collocation_count = 2501
+z_bounds = [0.0, 2.0]
+x_bounds = [0.0, 3.0]
+grid_shape = [101, 151]
+receiver_count = 11
+
+[training]
+steps = 3001
+learning_rate = 0.005
+betas = [0.5, 0.9]
+eta_min = 0.0
+
+[laplace]
+method = "legacy_diagonal"
+batches = 1000
+batch_size = 2501
+samples = 1000
+add = 1000.0
+multiply = 0.001
