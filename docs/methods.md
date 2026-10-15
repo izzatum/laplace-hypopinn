@@ -223,8 +223,30 @@ K_{xx}=J_xJ_x^\top/\lambda,\quad K_{xz}=J_xJ_z^\top/\lambda,\quad
 
 The mean remains the trained network output. The covariance-dependent KL is
 ½(logdet(H)−tr(Kzz A)); omitted mean terms are constant with the center/prior
-fixed. For each whitened residual mean r and variance v, sum one of these terms
-and add KL:
+fixed. These are mathematical covariance identities. The implementation avoids
+the subtraction of large kernel terms, which can erase finite variances and
+variational gradients in strongly informed directions.
+
+Instead, compact Householder QR gives `Jz.T/sqrt(λ) = Q[R;0]`. Apply its
+reflectors to each streamed query Jacobian divided by √λ, retaining the first
+k=min(parameter count, inducing count) coordinates u and the squared norm of the
+remaining coordinates. For `core=R@L`, QR of the small augmented matrix
+`[core.T; I]` gives an upper triangular root U with
+`U.T@U = I + core@core.T`. Evaluate variance as the positive sum
+`||u_perp||² + ||solve(U.T,u)||²`, and KL as
+`½(2*sum(log(abs(diag(U)))) - k + ||solve(U,I)||_F²)`.
+This preserves prior directions for rank-deficient inducing features without
+forming a full parameter-space orthogonal matrix or a grid covariance.
+
+VaLLA explicitly uses float64 for these fixed QR/projection caches and small
+variational calculations on the original device, including with float32 models.
+Returned variances, KL and posterior tensors retain the model dtype, with
+gradients propagated through the work precision. Metadata records this policy.
+The allocation guard counts float64 work bytes, including the augmented QR;
+only inducing Jacobians, residual statistics, cross-kernel rows and compact
+query features are cached. Full residual Jacobian chunks are discarded.
+
+For each whitened residual mean r and variance v, sum one of these terms and add KL:
 
 \[
 \alpha_{\rm V}=0:\ \tfrac12(r^2+v),\qquad
@@ -256,8 +278,9 @@ L=I, the covariance equals `(λI + J.T@J)^-1`; optimization may change L.
 
 Symmetrize PSD estimates before eigendecomposition. Clamp only roundoff-scale
 negative eigenvalues with recorded tolerance/correction; reject material negative
-or nonfinite inputs. Use Cholesky solves and exact additive damping, with explicit
-memory/chunk budgets. No silent device/dtype fallback or unrecorded jitter is part
+or nonfinite inputs. Use triangular solves with Cholesky or QR precision roots
+and exact additive damping, with explicit memory/chunk budgets. No silent
+device/dtype fallback or unrecorded jitter is part
 of these definitions. Dense float64 algebraic identities, jet/autograd comparisons,
 transformed-GGN EFB checks, small dense INF/VaLLA covariance and KL checks, and
 chunk-coherent draws are the relevant numerical oracles; finite samples alone do
