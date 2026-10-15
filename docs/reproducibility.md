@@ -6,7 +6,9 @@ physics-informed neural network for hypocenter localization and its predictive
 uncertainty*, Machine Learning: Science and Technology **3**, 045001,
 [doi:10.1088/2632-2153/ac94b3](https://doi.org/10.1088/2632-2153/ac94b3).
 The original scientific attribution and archived source comments are retained.
-The article's CC BY 4.0 terms do not establish a software license for this repository.
+The maintained code is licensed under [MIT](../LICENSE); [third-party notices](../THIRD_PARTY_NOTICES.md)
+define the exceptions for archived code and bundled data. The article's CC BY 4.0
+terms apply separately to the publication.
 
 The [archived notebooks](../archive/notebooks/) are historical evidence. Cell
 references below use **zero-based indices in the notebook JSON**, including

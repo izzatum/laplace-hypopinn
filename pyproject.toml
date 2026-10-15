@@ -1,11 +1,14 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "laplace-hypopinn"
 version = "0.1.0"
 description = "Functional physics-informed hypocenter inversion and Laplace approximations"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "LICENSES/*.txt"]
 requires-python = ">=3.12"
 dependencies = ["numpy>=1.26,<3", "torch>=2.5,<3"]
 
@@ -13,7 +16,7 @@ dependencies = ["numpy>=1.26,<3", "torch>=2.5,<3"]
 hypopinn = "laplace_hypopinn.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.9", "build>=1.2", "setuptools>=68", "wheel"]
+dev = ["pytest>=8", "ruff>=0.9", "build>=1.2", "setuptools>=77.0.3", "wheel"]
 fast-marching = ["scikit-fmm>=2024.5.29"]
 plot = ["matplotlib>=3.8"]
 notebooks = [

@@ -5,8 +5,10 @@ The six original `EX_*.ipynb` notebooks are preserved byte-for-byte in
 is preserved in `legacy/curvature/`. `manifest.json` records each original path,
 archived path and the SHA-256 recorded before relocation. The original
 `otway2.csv` remains at the repository root. Source comments, attribution and
-notebook outputs are retained; archival relocation grants no additional license
-permissions.
+notebook outputs are retained. This historical material is excluded from the
+maintained package's MIT grant. The archived curvature library retains its GPLv3
+license and component notices; see [third-party notices](../THIRD_PARTY_NOTICES.md)
+for license copies, provenance and data-reuse scope.
 
 Use the installed package and its documented experiment presets for new work.
 These files retain their historical scientific and runtime limitations: mutable
