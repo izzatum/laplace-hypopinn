@@ -26,5 +26,24 @@ jobs:
         run: python -m ruff check .
       - name: Test scientific contracts, archive, plots, and isolated wheel
         run: python -m pytest -q
+      - name: Execute maintained tutorial notebooks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import nbformat
+          from nbclient import NotebookClient
+
+          paths = sorted(Path("examples/notebooks").glob("*.ipynb"))
+          assert paths, "No tutorial notebooks found"
+          for path in paths:
+              notebook = nbformat.read(path, as_version=4)
+              nbformat.validate(notebook)
+              NotebookClient(
+                  notebook, timeout=300, kernel_name="laplace-hypopinn",
+                  resources={"metadata": {"path": str(path.parent.resolve())}},
+                  record_timing=False,
+              ).execute()
+              print(f"Executed {path}", flush=True)
+          PY
       - name: Build source and wheel distributions
         run: python -m build

@@ -46,6 +46,11 @@ Choose `--method` from `legacy_diagonal`, `diagonal`, `block_diagonal`, `full`,
 explain their distinct targets. A smoke run demonstrates execution, not published
 accuracy or calibrated uncertainty.
 
+Learn each method with the eight [executed tutorial notebooks](examples/notebooks/README.md):
+data preparation, training, method-specific fitting, diagnostics, travel-time fields
+and source-location uncertainty plots. They use the notebook architecture with
+smaller CPU teaching budgets and are independent of the archived originals.
+
 Depth and width are configurable; the notebook's 2,737-parameter Mish network is
 an example preset, not a model-size constraint. Custom models use named tensors:
 
