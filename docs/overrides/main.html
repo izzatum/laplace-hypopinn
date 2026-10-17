@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% if page and page.canonical_url %}
+    {% set title = page.meta.title | default(page.title, true) %}
+    {% set description = page.meta.description | default(config.site_description, true) %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ config.site_name | e }}">
+    <meta property="og:title" content="{{ title | e }}">
+    <meta property="og:description" content="{{ description | e }}">
+    <meta property="og:url" content="{{ page.canonical_url | e }}">
+    <meta property="og:image" content="{{ config.site_url }}assets/social-card.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Laplace HypoPINN: physics-informed hypocenter localization and eight Laplace approximation tutorials">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ title | e }}">
+    <meta name="twitter:description" content="{{ description | e }}">
+    <meta name="twitter:image" content="{{ config.site_url }}assets/social-card.png">
+    <meta name="twitter:image:alt" content="Laplace HypoPINN: physics-informed hypocenter localization and eight Laplace approximation tutorials">
+    {% for item in discovery_structured_data %}
+    <script type="application/ld+json">{{ item | tojson }}</script>
+    {% endfor %}
+  {% else %}
+    <meta name="robots" content="noindex">
+  {% endif %}
+  {% if config.extra.google_site_verification %}
+    <meta name="google-site-verification" content="{{ config.extra.google_site_verification | e }}">
+  {% endif %}
+  {% if config.extra.bing_site_verification %}
+    <meta name="msvalidate.01" content="{{ config.extra.bing_site_verification | e }}">
+  {% endif %}
+{% endblock %}

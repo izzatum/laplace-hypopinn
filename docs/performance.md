@@ -1,3 +1,8 @@
+---
+title: Laplace HypoPINN performance and validation
+description: Plan CPU and GPU experiments using measured Laplace HypoPINN timings, memory budgets, reproducibility checks and scalable curvature and prediction settings.
+---
+
 # Validation and performance
 
 The CPU reference environment is Python 3.12, PyTorch 2.5.1+cpu and NumPy

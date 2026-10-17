@@ -1,3 +1,8 @@
+---
+title: Reproduce Laplace HypoPINN research experiments
+description: Understand the original notebook presets, model architecture, data requirements, numerical conventions and differences from the 2022 Laplace HypoPINN paper.
+---
+
 # Scientific compatibility and reproducibility
 
 This package develops the notebooks accompanying Muhammad Izzatullah, Isa Eren

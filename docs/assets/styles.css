@@ -1,0 +1,11 @@
+/* System fonts avoid external font requests; constrain dense research tables. */
+:root {
+  --md-text-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --md-code-font: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+.md-typeset .arithmatex { overflow-x: auto; }
+.md-typeset table:not([class]) { font-size: 0.72rem; }
+.md-typeset a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; }
+}

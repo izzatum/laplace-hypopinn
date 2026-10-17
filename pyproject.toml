@@ -5,17 +5,29 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "laplace-hypopinn"
 version = "0.1.0"
-description = "Functional physics-informed hypocenter inversion and Laplace approximations"
+description = "PyTorch physics-informed earthquake hypocenter localization with Laplace uncertainty"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "LICENSES/*.txt"]
 requires-python = ">=3.12"
 dependencies = ["numpy>=1.26,<3", "torch>=2.5,<3"]
+keywords = [
+    "physics-informed neural networks", "hypocenter localization", "seismology",
+    "laplace approximation", "uncertainty quantification", "pytorch",
+]
+
+[project.urls]
+Homepage = "https://izzatum.github.io/laplace-hypopinn/"
+Documentation = "https://izzatum.github.io/laplace-hypopinn/"
+Repository = "https://github.com/izzatum/laplace-hypopinn"
+Issues = "https://github.com/izzatum/laplace-hypopinn/issues"
+Paper = "https://doi.org/10.1088/2632-2153/ac94b3"
 
 [project.scripts]
 hypopinn = "laplace_hypopinn.cli:main"
 
 [project.optional-dependencies]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.6,<10"]
 dev = ["pytest>=8", "ruff>=0.9", "build>=1.2", "setuptools>=77.0.3", "wheel"]
 fast-marching = ["scikit-fmm>=2024.5.29"]
 plot = ["matplotlib>=3.8"]

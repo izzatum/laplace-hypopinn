@@ -1,3 +1,8 @@
+---
+title: Extend Laplace HypoPINN models and experiments
+description: Build custom physics-informed models with functional PyTorch APIs, configurable depth and width, explicit random state, and reproducible experiment artifacts.
+---
+
 # Functional research architecture
 
 The maintained package separates physical observations, model evaluation,

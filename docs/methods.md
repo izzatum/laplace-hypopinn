@@ -1,4 +1,9 @@
-# Curvature and predictive conventions
+---
+title: Laplace approximation methods for PINNs
+description: Compare diagonal, block, full GGN, KFAC, EFB, INF and VaLLA approximations, with explicit residual targets, damping, sampling and research references.
+---
+
+# Laplace approximation methods and predictive conventions
 
 The [reproducibility contract](reproducibility.md) identifies the historical
 settings and paper/code differences. This document defines the corrected research

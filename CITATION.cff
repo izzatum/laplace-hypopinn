@@ -3,6 +3,15 @@ message: "Please cite the original Laplace HypoPINN article when using these res
 type: software
 license: MIT
 title: "Laplace HypoPINN"
+version: "0.1.0"
+url: "https://izzatum.github.io/laplace-hypopinn/"
+abstract: "A functional PyTorch research package for physics-informed travel-time inversion, earthquake hypocenter localization, and local network-weight uncertainty using Laplace approximations. Includes configurable PINN models, eight approximation methods, executed tutorials, and preserved historical notebooks."
+keywords:
+  - physics-informed neural networks
+  - hypocenter localization
+  - Laplace approximation
+  - uncertainty quantification
+  - seismology
 authors:
   - family-names: Izzatullah
     given-names: Muhammad

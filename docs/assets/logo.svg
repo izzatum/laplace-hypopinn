@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Laplace HypoPINN hypocenter symbol">
+  <rect width="64" height="64" rx="12" fill="#123a67"/>
+  <g fill="none" stroke="#76ddd0" stroke-width="2.5">
+    <ellipse cx="32" cy="35" rx="24" ry="19"/>
+    <ellipse cx="32" cy="35" rx="15" ry="11"/>
+    <path d="M8 14h48M14 10v8M32 10v8M50 10v8"/>
+  </g>
+  <path d="m32 26 2.4 6.2H41l-5.2 4 2 6.3-5.8-3.8-5.8 3.8 2-6.3-5.2-4h6.6z" fill="#fff"/>
+</svg>
