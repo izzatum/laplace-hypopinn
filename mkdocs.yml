@@ -1,0 +1,92 @@
+site_name: Laplace HypoPINN
+site_url: https://izzatum.github.io/laplace-hypopinn/
+site_description: >-
+  A functional PyTorch research package for physics-informed hypocenter
+  localization and Laplace uncertainty, with flexible PINNs and eight tutorials.
+repo_name: izzatum/laplace-hypopinn
+repo_url: https://github.com/izzatum/laplace-hypopinn
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2022–2026 Muhammad Izzatullah
+use_directory_urls: true
+strict: true
+
+nav:
+  - Overview: index.md
+  - Tutorials:
+      - Tutorial overview: tutorials.md
+      - Historical diagonal: tutorials/legacy_diagonal.md
+      - GGN diagonal: tutorials/diagonal.md
+      - Block diagonal: tutorials/block_diagonal.md
+      - Full GGN: tutorials/full.md
+      - KFAC: tutorials/kfac.md
+      - EFB: tutorials/efb.md
+      - INF: tutorials/inf.md
+      - VaLLA: tutorials/valla.md
+  - Laplace methods: methods.md
+  - Questions and answers: faq.md
+  - Architecture: architecture.md
+  - Reproducibility: reproducibility.md
+  - Performance: performance.md
+  - Citation and license: citation.md
+
+# Design discussions remain available in GitHub, outside the public documentation.
+exclude_docs: |
+  superpowers/
+  overrides/
+
+hooks:
+  - scripts/docs_hooks.py
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  language: en
+  font: false
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  palette:
+    primary: blue
+    accent: teal
+  features:
+    - navigation.footer
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_css:
+  - assets/styles.css
+extra_javascript:
+  - assets/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+validation:
+  nav:
+    omitted_files: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn

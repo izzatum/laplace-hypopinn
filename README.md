@@ -1,8 +1,20 @@
-# Laplace HypoPINN
+# Laplace HypoPINN: physics-informed earthquake localization
 
-Physics-informed travel-time inversion, hypocenter localization and local
-network-weight uncertainty. A functional PyTorch research package with flexible
-models, eight Laplace approximation methods and [executed tutorials](examples/notebooks/README.md).
+**Laplace HypoPINN** is a Python/PyTorch research package for earthquake and
+microseismic hypocenter localization with physics-informed neural networks (PINNs).
+Given a velocity model and receiver travel times, it learns a two-dimensional
+travel-time field constrained by the Eikonal equation, estimates the source
+location, and uses Laplace approximations to explore local network-weight uncertainty.
+
+[Documentation](https://izzatum.github.io/laplace-hypopinn/) ·
+[Tutorial notebooks](examples/notebooks/README.md) ·
+[Common questions](https://izzatum.github.io/laplace-hypopinn/faq/) ·
+[Research paper](https://doi.org/10.1088/2632-2153/ac94b3)
+
+This repository accompanies Izzatullah et al. (2022), *Laplace HypoPINN:
+physics-informed neural network for hypocenter localization and its predictive
+uncertainty*. The maintained package adds configurable models, functional APIs
+and explicit research variants while preserving the original notebooks.
 
 ```mermaid
 flowchart LR
@@ -64,6 +76,13 @@ coordinate-derivative adapters.
 [Presets and reproduction guidance](docs/reproducibility.md) cover full historical
 budgets and paper/notebook differences. Read the [performance guide](docs/performance.md)
 before scaling up. Coordinates are `(z,x)` in km, velocity km/s and travel time seconds.
+
+**Can I use a different PINN architecture?** Yes: depth and widths are configurable,
+and custom scalar models can supply a functional forward or `torch.nn.Module` adapter.
+**Do I need a GPU?** No: the tutorials and tests run on CPU.
+**Are the uncertainty estimates calibrated?** Calibration is not established by
+the teaching examples; damping, likelihood assumptions and approximation choices
+are documented in the [methods](docs/methods.md) and [FAQ](https://izzatum.github.io/laplace-hypopinn/faq/).
 
 For development and the full test suite:
 

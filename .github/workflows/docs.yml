@@ -1,0 +1,103 @@
+name: documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install documentation dependencies
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tomllib
+
+          dependencies = tomllib.loads(Path("pyproject.toml").read_text())["project"]["optional-dependencies"]["docs"]
+          subprocess.check_call([sys.executable, "-m", "pip", "install", *dependencies])
+          PY
+      - name: Build static documentation
+        env:
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
+        run: python -m mkdocs build --strict
+      - name: Validate crawlable pages, links and metadata
+        run: python scripts/check_docs.py site
+      - name: Validate IndexNow notification without submitting
+        run: >-
+          python scripts/submit_indexnow.py --sitemap site/sitemap.xml
+          --key-file docs/00e2a02d567caa5df2b7c97072b4eb95.txt --dry-run
+      - name: Check GitHub Pages availability
+        id: pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if build_type=$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '.build_type' 2>/dev/null) && [ "$build_type" = "workflow" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Documentation validated. To publish it, set Settings > Pages > Source to GitHub Actions, then run this workflow again."
+          fi
+      - name: Configure GitHub Pages
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: needs.build.outputs.pages_enabled == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - uses: actions/checkout@v4
+      - name: Notify IndexNow after successful publication
+        id: indexnow
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          curl --fail --show-error --retry 3 --retry-delay 5 \
+            https://izzatum.github.io/laplace-hypopinn/sitemap.xml \
+            --output "$RUNNER_TEMP/hypopinn-sitemap.xml"
+          python scripts/submit_indexnow.py \
+            --sitemap "$RUNNER_TEMP/hypopinn-sitemap.xml" \
+            --key-file docs/00e2a02d567caa5df2b7c97072b4eb95.txt
+      - name: Report notification service failure
+        if: steps.indexnow.outcome == 'failure'
+        run: echo "::warning::The documentation was published, but IndexNow notification failed. A maintainer can retry the notification; search indexing is not guaranteed by submission."

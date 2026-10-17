@@ -1,0 +1,43 @@
+# Laplace HypoPINN
+
+> Laplace HypoPINN is a Python/PyTorch research package for two-dimensional seismic hypocenter localization using physics-informed neural networks and local Laplace approximations of network-weight uncertainty.
+
+The package learns travel-time fields from a velocity model and receiver travel times, then estimates sources from field minima. Its functional API supports configurable and custom pointwise models. Install from the GitHub checkout using Python 3.12 or later; the smoke example and tutorials run on CPU.
+
+## Documentation
+
+- [Overview and installation](https://izzatum.github.io/laplace-hypopinn/): Project scope, clone/install commands and research workflow.
+- [Tutorials](https://izzatum.github.io/laplace-hypopinn/tutorials/): Eight executed notebooks covering historical diagonal, GGN diagonal, block diagonal, full GGN, KFAC, EFB, INF and VaLLA.
+- [Method definitions](https://izzatum.github.io/laplace-hypopinn/methods/): Residual weighting, curvature equations, damping, method sources and predictive conventions.
+- [Architecture](https://izzatum.github.io/laplace-hypopinn/architecture/): Functional API, custom models, data contracts, random state and saved artifacts.
+- [Reproducibility](https://izzatum.github.io/laplace-hypopinn/reproducibility/): Historical presets, coordinates, notebook/paper differences and evidence needed for comparison claims.
+- [Performance and validation](https://izzatum.github.io/laplace-hypopinn/performance/): Recorded CPU measurements, reference comparisons and scaling limits.
+- [FAQ](https://izzatum.github.io/laplace-hypopinn/faq/): Direct answers about installation, methods, custom models, data, uncertainty and licensing.
+- [Citation](https://izzatum.github.io/laplace-hypopinn/citation/): Full paper reference and BibTeX for Izzatullah, Yildirim, Waheed and Alkhalifah (2022), DOI 10.1088/2632-2153/ac94b3.
+
+## Rendered tutorial lessons
+
+- [Historical diagonal tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/legacy_diagonal/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [GGN diagonal tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/diagonal/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [GGN block diagonal tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/block_diagonal/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [Full GGN tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/full/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [KFAC tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/kfac/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [EFB tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/efb/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [INF tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/inf/): Executed code, scientific assumptions, diagnostics and saved plots.
+- [VaLLA tutorial](https://izzatum.github.io/laplace-hypopinn/tutorials/valla/): Executed code, scientific assumptions, diagnostics and saved plots.
+
+## Source and research materials
+
+- [GitHub repository](https://github.com/izzatum/laplace-hypopinn): Maintained implementation, tests, configurations and contribution history.
+- [Notebook index](https://github.com/izzatum/laplace-hypopinn/blob/main/examples/notebooks/README.md): Interactive setup and links to the eight lessons with rendered figures.
+- [Citation metadata](https://github.com/izzatum/laplace-hypopinn/blob/main/CITATION.cff): Machine-readable software and preferred article citation.
+- [Original paper](https://doi.org/10.1088/2632-2153/ac94b3): Laplace HypoPINN: physics-informed neural network for hypocenter localization and its predictive uncertainty.
+- [Historical archive](https://github.com/izzatum/laplace-hypopinn/blob/main/archive/README.md): Preserved original notebooks and legacy code.
+- [MIT License](https://github.com/izzatum/laplace-hypopinn/blob/main/LICENSE): License for maintained code, documentation and new tutorials.
+- [Third-party notices](https://github.com/izzatum/laplace-hypopinn/blob/main/THIRD_PARTY_NOTICES.md): Exclusions and separate terms for the archive, bundled data and dependencies.
+
+## Interpretation
+
+Reported uncertainty is local variation induced by neural-network weights; it does not alone establish calibrated source-location, velocity or arrival-pick uncertainty. Teaching notebooks use reduced budgets. Positive posterior regularization is post-hoc damping unless training used the matching prior and likelihood scale. VaLLA uses linearized predictions; the other methods use nonlinear evaluation at sampled weights. Historical diagonal curvature differs from the maintained GGN target.
+
+This file is an optional documentation index. It does not replace the linked method definitions, numerical evidence or license terms.
