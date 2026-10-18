@@ -93,6 +93,12 @@ def on_page_context(context, page, config, nav):
             "softwareVersion": project["version"],
             "license": config.repo_url + "/blob/main/LICENSE",
             "usageInfo": config.repo_url + "/blob/main/THIRD_PARTY_NOTICES.md",
+            "author": {
+                "@type": "Person",
+                "name": "Muhammad Izzatullah",
+                "url": "https://izzatullah.com/",
+                "sameAs": ["https://orcid.org/0000-0001-6349-3103"],
+            },
             "citation": {
                 "@type": "ScholarlyArticle",
                 "name": (

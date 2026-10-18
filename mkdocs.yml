@@ -6,7 +6,7 @@ site_description: >-
 repo_name: izzatum/laplace-hypopinn
 repo_url: https://github.com/izzatum/laplace-hypopinn
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; 2022–2026 Muhammad Izzatullah
+copyright: 'Copyright &copy; 2022–2026 Muhammad Izzatullah<br><a href="https://izzatullah.com/research/laplace-hypopinn/">Muhammad Izzatullah · izzatullah.com</a>'
 use_directory_urls: true
 strict: true
 
